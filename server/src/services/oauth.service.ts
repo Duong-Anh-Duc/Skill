@@ -8,12 +8,13 @@ const oauthClient = new OAuth2Client(
 );
 
 export const oauthService = {
-  getAuthUrl(userId: string): string {
+  getAuthUrl(userId: string, redirectUrl?: string): string {
+    const state = JSON.stringify({ userId, redirectUrl: redirectUrl || config.appUrl });
     return oauthClient.generateAuthUrl({
       access_type: 'offline',
       scope: [...config.google.scopes],
       prompt: 'consent',
-      state: userId,
+      state,
     });
   },
 

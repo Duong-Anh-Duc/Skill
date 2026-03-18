@@ -3,34 +3,46 @@ import { config } from '../config';
 import { oauthService, tokenStoreService } from '../services';
 
 export const oauthController = {
-  // GET /api/oauth/connect?userId=xxx
+  // GET /api/oauth/connect?userId=xxx&redirectUrl=xxx
   connect(req: Request, res: Response) {
-    const { userId } = req.query;
+    const { userId, redirectUrl } = req.query;
     if (!userId || typeof userId !== 'string') {
       return res.status(400).json({ success: false, message: 'userId is required' });
     }
 
-    const authUrl = oauthService.getAuthUrl(userId);
+    const authUrl = oauthService.getAuthUrl(userId, redirectUrl as string | undefined);
     res.redirect(authUrl);
   },
 
-  // GET /api/oauth/callback?code=xxx&state=userId
+  // GET /api/oauth/callback?code=xxx&state=json
   async callback(req: Request, res: Response) {
     try {
-      const { code, state: userId, error } = req.query;
+      const { code, state, error } = req.query;
 
-      if (error) {
-        return res.redirect(`${config.appUrl}?error=${encodeURIComponent(error as string)}`);
+      // Parse state JSON to get userId and redirectUrl
+      let userId: string | undefined;
+      let redirectUrl: string = config.appUrl;
+      try {
+        const parsed = JSON.parse(state as string);
+        userId = parsed.userId;
+        redirectUrl = parsed.redirectUrl || config.appUrl;
+      } catch {
+        // Fallback: state is plain userId (backward compatible)
+        userId = state as string;
       }
 
-      if (!code || !userId || typeof code !== 'string' || typeof userId !== 'string') {
-        return res.redirect(`${config.appUrl}?error=missing_code_or_state`);
+      if (error) {
+        return res.redirect(`${redirectUrl}?error=${encodeURIComponent(error as string)}`);
+      }
+
+      if (!code || !userId || typeof code !== 'string') {
+        return res.redirect(`${redirectUrl}?error=missing_code_or_state`);
       }
 
       const tokens = await oauthService.exchangeCode(code);
       await tokenStoreService.saveTokens(userId, tokens);
 
-      res.redirect(`${config.appUrl}?status=connected&userId=${encodeURIComponent(userId)}`);
+      res.redirect(`${redirectUrl}?status=connected&userId=${encodeURIComponent(userId)}`);
     } catch (err) {
       console.error('OAuth callback error:', err);
       res.redirect(`${config.appUrl}?error=${encodeURIComponent((err as Error).message)}`);

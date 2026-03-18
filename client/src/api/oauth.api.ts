@@ -4,7 +4,8 @@ import type { ApiResponse, TokenData, TokenInfo } from '@/types';
 export const oauthApi = {
   getConnectUrl(userId: string): string {
     const base = import.meta.env.VITE_API_URL || '/api';
-    return `${base}/oauth/connect?userId=${encodeURIComponent(userId)}`;
+    const redirectUrl = window.location.origin;
+    return `${base}/oauth/connect?userId=${encodeURIComponent(userId)}&redirectUrl=${encodeURIComponent(redirectUrl)}`;
   },
 
   getToken(userId: string) {
