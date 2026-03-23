@@ -34,6 +34,12 @@ import {
   ApiOutlined,
   LinkOutlined,
   ThunderboltOutlined,
+  TableOutlined,
+  FileTextOutlined,
+  ContactsOutlined,
+  CheckSquareOutlined,
+  YoutubeOutlined,
+  SlidersOutlined,
 } from '@ant-design/icons';
 import { List, Modal } from 'antd';
 import { oauthApi } from '@/api';
@@ -336,6 +342,112 @@ export default function OAuthPage() {
       start: e.start?.dateTime || e.start?.date,
     })) || [];
     setApiResult({ service: 'Google Calendar', upcoming_events: events });
+  };
+
+  const handleTestSheets = async () => {
+    const data = await fetchGoogleApi(
+      'https://www.googleapis.com/drive/v3/files?q=mimeType%3D%27application/vnd.google-apps.spreadsheet%27&pageSize=10&fields=files(id,name,modifiedTime,owners)',
+      'Sheets',
+    );
+    if (!data) return;
+    const files = data.files?.map((f: any) => ({
+      name: f.name,
+      id: f.id,
+      modified: f.modifiedTime,
+      owner: f.owners?.[0]?.displayName || '',
+    })) || [];
+    setApiResult({ service: 'Google Sheets', total: files.length, spreadsheets: files });
+  };
+
+  const handleTestDocs = async () => {
+    const data = await fetchGoogleApi(
+      'https://www.googleapis.com/drive/v3/files?q=mimeType%3D%27application/vnd.google-apps.document%27&pageSize=10&fields=files(id,name,modifiedTime,owners)',
+      'Docs',
+    );
+    if (!data) return;
+    const files = data.files?.map((f: any) => ({
+      name: f.name,
+      id: f.id,
+      modified: f.modifiedTime,
+      owner: f.owners?.[0]?.displayName || '',
+    })) || [];
+    setApiResult({ service: 'Google Docs', total: files.length, documents: files });
+  };
+
+  const handleTestContacts = async () => {
+    const data = await fetchGoogleApi(
+      'https://people.googleapis.com/v1/people/me/connections?pageSize=10&personFields=names,emailAddresses,phoneNumbers',
+      'Contacts',
+    );
+    if (!data) return;
+    const contacts = data.connections?.map((c: any) => ({
+      name: c.names?.[0]?.displayName || '(Không tên)',
+      email: c.emailAddresses?.[0]?.value || '',
+      phone: c.phoneNumbers?.[0]?.value || '',
+    })) || [];
+    setApiResult({ service: 'Google Contacts', total: data.totalPeople || contacts.length, contacts });
+  };
+
+  const handleTestTasks = async () => {
+    const taskListsData = await fetchGoogleApi(
+      'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
+      'Tasks',
+    );
+    if (!taskListsData) return;
+
+    const lists = taskListsData.items || [];
+    const allTasks: any[] = [];
+    for (const list of lists.slice(0, 3)) {
+      const tasksData = await fetchGoogleApi(
+        `https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks?maxResults=5`,
+        'Tasks',
+      );
+      if (tasksData?.items) {
+        allTasks.push(...tasksData.items.map((t: any) => ({
+          title: t.title,
+          status: t.status,
+          due: t.due || null,
+          list: list.title,
+        })));
+      }
+    }
+    setApiResult({ service: 'Google Tasks', task_lists: lists.length, tasks: allTasks });
+  };
+
+  const handleTestYouTube = async () => {
+    const data = await fetchGoogleApi(
+      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
+      'YouTube',
+    );
+    if (!data) return;
+    const channel = data.items?.[0];
+    if (channel) {
+      setApiResult({
+        service: 'YouTube',
+        channel_name: channel.snippet?.title,
+        description: channel.snippet?.description,
+        subscribers: channel.statistics?.subscriberCount,
+        total_videos: channel.statistics?.videoCount,
+        total_views: channel.statistics?.viewCount,
+      });
+    } else {
+      setApiResult({ service: 'YouTube', message: 'Không tìm thấy kênh YouTube' });
+    }
+  };
+
+  const handleTestSlides = async () => {
+    const data = await fetchGoogleApi(
+      'https://www.googleapis.com/drive/v3/files?q=mimeType%3D%27application/vnd.google-apps.presentation%27&pageSize=10&fields=files(id,name,modifiedTime,owners)',
+      'Slides',
+    );
+    if (!data) return;
+    const files = data.files?.map((f: any) => ({
+      name: f.name,
+      id: f.id,
+      modified: f.modifiedTime,
+      owner: f.owners?.[0]?.displayName || '',
+    })) || [];
+    setApiResult({ service: 'Google Slides', total: files.length, presentations: files });
   };
 
   // ── Style helpers ──
@@ -766,6 +878,72 @@ export default function OAuthPage() {
                 style={apiButtonStyle('#fbbc04')}
               >
                 Calendar
+              </Button>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Button
+                icon={<TableOutlined />}
+                onClick={handleTestSheets}
+                loading={loading === 'Sheets'}
+                block
+                style={apiButtonStyle('#0f9d58')}
+              >
+                Sheets
+              </Button>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Button
+                icon={<FileTextOutlined />}
+                onClick={handleTestDocs}
+                loading={loading === 'Docs'}
+                block
+                style={apiButtonStyle('#4285f4')}
+              >
+                Docs
+              </Button>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Button
+                icon={<ContactsOutlined />}
+                onClick={handleTestContacts}
+                loading={loading === 'Contacts'}
+                block
+                style={apiButtonStyle('#7b1fa2')}
+              >
+                Contacts
+              </Button>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Button
+                icon={<CheckSquareOutlined />}
+                onClick={handleTestTasks}
+                loading={loading === 'Tasks'}
+                block
+                style={apiButtonStyle('#ff6d00')}
+              >
+                Tasks
+              </Button>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Button
+                icon={<YoutubeOutlined />}
+                onClick={handleTestYouTube}
+                loading={loading === 'YouTube'}
+                block
+                style={apiButtonStyle('#ff0000')}
+              >
+                YouTube
+              </Button>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Button
+                icon={<SlidersOutlined />}
+                onClick={handleTestSlides}
+                loading={loading === 'Slides'}
+                block
+                style={apiButtonStyle('#f4b400')}
+              >
+                Slides
               </Button>
             </Col>
           </Row>
